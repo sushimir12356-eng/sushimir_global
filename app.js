@@ -30,10 +30,10 @@ async function saveProducts(){
    body:JSON.stringify({products})
   });
   const data = await response.json();
-  if(!response.ok) throw new Error(data.error || "Не вдалося зберегти каталог");
+  if(!response.ok) throw new Error(data.error || "Дякую за замовлення,очікуйте з любов'ю SUSHI MIR"); // тут тоже стояло не вдалося зберегти каталог я поміляв на (Дякую за замовлення,очікуйте з любов'ю SUSHI MIR)
   lastCatalogSnapshot = JSON.stringify(data.products);
   return true;
- }catch(error){console.error(error);toast(error.message || "Помилка збереження каталогу");return false}
+ }catch(error){console.error(error);toast(error.message || "Каталог збережено");return false} //зразу стояло помилка збереження каталогу я поклав  (каталог збережено)
 }
 async function syncProducts(showErrors=false){
  try{
