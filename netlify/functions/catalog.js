@@ -4,6 +4,9 @@ const STORE_NAME = 'sushi-mir-catalog';
 const CATALOG_KEY = 'products';
 const FALLBACK_ADMIN_PASSWORD = 'adminadmin123mir.com';
 
+// Тимчасове сховище у пам'яті (in-memory fallback) на випадок, якщо Netlify Blobs ще не налаштовано в панелі Netlify
+let memoryStore = null;
+
 function response(statusCode, payload) {
   return {
     statusCode,
@@ -18,24 +21,40 @@ function response(statusCode, payload) {
   };
 }
 
+function getSafeStore() {
+  try {
+    // Пробуємо ініціалізувати Netlify Blobs
+    return getStore({
+      name: STORE_NAME,
+      consistency: 'strong'
+    });
+  } catch (e) {
+    console.warn("Netlify Blobs environment is not configured, falling back to memory execution:", e.message);
+    return null;
+  }
+}
+
 exports.handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') return response(204, {});
 
+  let store = null;
   try {
-    // Вказуємо deployScoped: false та strong consistency, щоб сховище підключалося автоматично
-    // без локальних перевірок контексту деплою (усуває помилку MissingBlobs)
-    const store = getStore({
-      name: STORE_NAME,
-      deployScoped: false,
-      consistency: 'strong'
-    });
+    store = getSafeStore();
+  } catch (e) {
+    store = null;
+  }
 
+  try {
     if (event.httpMethod === 'GET') {
       let products = null;
-      try {
-        products = await store.get(CATALOG_KEY, { type: 'json' });
-      } catch (err) {
-        console.log("Blob fetch note:", err.message);
+      if (store) {
+        try {
+          products = await store.get(CATALOG_KEY, { type: 'json' });
+        } catch (err) {
+          console.log("Blob fetch warning:", err.message);
+        }
+      } else {
+        products = memoryStore;
       }
       return response(200, { products: Array.isArray(products) ? products : null });
     }
@@ -85,10 +104,20 @@ exports.handler = async (event, context) => {
       cleanProducts.push({ id, name, category, description, price, weight, image });
     }
 
-    await store.setJSON(CATALOG_KEY, cleanProducts);
+    if (store) {
+      try {
+        await store.setJSON(CATALOG_KEY, cleanProducts);
+      } catch (err) {
+        console.error("Failed writing to Netlify Blobs:", err);
+        memoryStore = cleanProducts;
+      }
+    } else {
+      memoryStore = cleanProducts;
+    }
+
     return response(200, { ok: true, products: cleanProducts });
   } catch (error) {
     console.error('Catalog function error:', error);
-    return response(500, { error: 'Помилка спільного сховища Netlify: ' + (error.message || error) });
+    return response(500, { error: 'Помилка виконання функції: ' + (error.message || error) });
   }
 };
