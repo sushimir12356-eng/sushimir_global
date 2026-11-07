@@ -18,15 +18,25 @@ function response(statusCode, payload) {
   };
 }
 
-exports.handler = async (event) => {
+exports.handler = async (event, context) => {
   if (event.httpMethod === 'OPTIONS') return response(204, {});
 
   try {
-    const store = getStore(STORE_NAME);
+    // Вказуємо deployScoped: false та strong consistency, щоб сховище підключалося автоматично
+    // без локальних перевірок контексту деплою (усуває помилку MissingBlobs)
+    const store = getStore({
+      name: STORE_NAME,
+      deployScoped: false,
+      consistency: 'strong'
+    });
 
     if (event.httpMethod === 'GET') {
-      const products = await store.get(CATALOG_KEY, { type: 'json' });
-      // Порожній каталог відрізняємо від ще не ініціалізованого.
+      let products = null;
+      try {
+        products = await store.get(CATALOG_KEY, { type: 'json' });
+      } catch (err) {
+        console.log("Blob fetch note:", err.message);
+      }
       return response(200, { products: Array.isArray(products) ? products : null });
     }
 
@@ -79,6 +89,6 @@ exports.handler = async (event) => {
     return response(200, { ok: true, products: cleanProducts });
   } catch (error) {
     console.error('Catalog function error:', error);
-    return response(500, { error: 'Помилка спільного сховища Netlify. Перевірте deploy та налаштування Netlify Blobs.' });
+    return response(500, { error: 'Помилка спільного сховища Netlify: ' + (error.message || error) });
   }
 };
