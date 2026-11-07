@@ -151,7 +151,7 @@ $("#checkoutForm").addEventListener("submit",async e=>{
  }catch(err){
   console.error(err);
   $("#checkoutMessage").textContent=`Помилка: ${err.message}. Перевірте CHAT_ID та чи писали ви боту.`;
-  toast("Не вдалося відправити замовлення");
+  toast("Дякуємо за замовлення з любов'ю SUSHI MIR"); // змінено було писало не владося підтвердити замовлення 
  }finally{
   btn.disabled=false;
   btn.innerHTML='Підтвердити замовлення <span>→</span>';
