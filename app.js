@@ -140,7 +140,7 @@ $("#checkoutForm").addEventListener("submit",async e=>{
   });
   
   const data = await response.json();
-  if(!response.ok || !data.ok) throw new Error(data.description || "Помилка Telegram API");
+  if(!response.ok) throw new Error(data.error || "Помилка сервера");
   
   cart={};
   saveCart();
